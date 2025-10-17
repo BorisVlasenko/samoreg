@@ -283,7 +283,7 @@
             </div>
             
             <div style="margin-top: 20px;">
-                <button onclick="createEvent()">Создать и получить ссылку</button>
+                <button onclick="submitCreateEvent()">Создать и получить ссылку</button>
             </div>
             
             <div id="linkContainer" class="hidden" style="margin-top: 20px;">
@@ -334,12 +334,17 @@
                 credentials: 'include'
             });
             
+            if (!response.ok) {
+                console.error('Failed to load events:', response.status);
+                return;
+            }
+            
             const events = await response.json();
             
             const container = document.getElementById('eventsContainer');
             container.innerHTML = '';
             
-            if (events.length === 0) {
+            if (!Array.isArray(events) || events.length === 0) {
                 container.innerHTML = '<p>Нет мероприятий на сегодня</p>';
                 return;
             }
@@ -408,12 +413,17 @@
             document.getElementById(`break-${id}`).remove();
         }
         
-        async function createEvent() {
+        async function submitCreateEvent() {
             const title = document.getElementById('eventTitle').value;
             const eventDate = document.getElementById('eventDate').value;
             const startTime = document.getElementById('startTime').value;
             const endTime = document.getElementById('endTime').value;
             const slotDuration = document.getElementById('slotDuration').value;
+            
+            if (!title || !eventDate || !startTime || !endTime) {
+                alert('Пожалуйста, заполните все обязательные поля');
+                return;
+            }
             
             const breaks = [];
             document.querySelectorAll('.break-item').forEach(item => {
@@ -444,6 +454,8 @@
                 document.getElementById('registrationLink').textContent = data.registration_url;
                 document.getElementById('linkContainer').classList.remove('hidden');
                 loadEvents();
+            } else {
+                alert('Ошибка при создании мероприятия: ' + (data.error || 'Неизвестная ошибка'));
             }
         }
         
