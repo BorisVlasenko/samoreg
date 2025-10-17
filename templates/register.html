@@ -326,7 +326,7 @@
             
             if (data.registered) {
                 myRegistration = data;
-                showAlert(`Вы уже зарегистрированы на ${data.slot_time}`, 'success');
+                showAlert(`Вы уже зарегистрированы на ${data.slot_time}. Выберите другой слот для изменения времени.`, 'success');
             }
         }
         
@@ -368,8 +368,8 @@
         async function registerForSlot(slotTime) {
             const childName = document.getElementById('childName').value.trim();
             
-            if (myRegistration) {
-                showAlert('Вы уже зарегистрированы на другой слот', 'warning');
+            if (myRegistration && myRegistration.slot_time === slotTime) {
+                showAlert('Вы уже зарегистрированы на это время', 'warning');
                 return;
             }
             
@@ -387,7 +387,11 @@
             
             if (data.success) {
                 myRegistration = data;
-                showAlert(`Успешно! Вы зарегистрированы на ${slotTime}`, 'success');
+                if (data.updated) {
+                    showAlert(`Время изменено! Теперь вы зарегистрированы на ${slotTime}`, 'success');
+                } else {
+                    showAlert(`Успешно! Вы зарегистрированы на ${slotTime}`, 'success');
+                }
                 await loadSlots();
             } else {
                 showAlert(data.error || 'Этот слот уже занят', 'error');

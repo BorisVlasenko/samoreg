@@ -464,7 +464,11 @@
             }
         }
         
+        let currentEventId = null;
+        
         async function viewRegistrations(eventId) {
+            currentEventId = eventId;
+            
             const response = await fetch(`/api/admin/events/${eventId}/registrations`, {
                 credentials: 'include'
             });
@@ -483,6 +487,7 @@
                                 <th>Время</th>
                                 <th>Имя ребенка</th>
                                 <th>Телефон</th>
+                                <th>Действия</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -494,6 +499,10 @@
                             <td>${reg.slot_time}</td>
                             <td>${reg.child_name}</td>
                             <td>${reg.phone}</td>
+                            <td>
+                                <button class="btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="editRegistration(${reg.id}, '${reg.slot_time}', '${reg.child_name}')">Изменить</button>
+                                <button class="btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteRegistration(${reg.id})">Удалить</button>
+                            </td>
                         </tr>
                     `;
                 });
@@ -503,6 +512,53 @@
             }
             
             document.getElementById('registrationsModal').style.display = 'block';
+        }
+        
+        async function editRegistration(regId, currentSlot, childName) {
+            const newSlot = prompt(`Изменить время для "${childName}".\nТекущее время: ${currentSlot}\n\nВведите новое время (формат ЧЧ:ММ):`, currentSlot);
+            
+            if (!newSlot || newSlot === currentSlot) {
+                return;
+            }
+            
+            // Проверка формата времени
+            if (!/^\d{2}:\d{2}$/.test(newSlot)) {
+                alert('Неверный формат времени. Используйте ЧЧ:ММ');
+                return;
+            }
+            
+            const response = await fetch(`/api/admin/registrations/${regId}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
+                body: JSON.stringify({slot_time: newSlot})
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                alert('Регистрация успешно изменена!');
+                viewRegistrations(currentEventId);
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось изменить регистрацию'));
+            }
+        }
+        
+        async function deleteRegistration(regId) {
+            if (!confirm('Вы уверены, что хотите удалить эту регистрацию?')) {
+                return;
+            }
+            
+            const response = await fetch(`/api/admin/registrations/${regId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                alert('Регистрация успешно удалена!');
+                viewRegistrations(currentEventId);
+                loadEvents();
+            }
         }
         
         function closeRegistrationsModal() {

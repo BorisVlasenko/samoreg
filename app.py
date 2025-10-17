@@ -9,28 +9,9 @@ import json
 
 app = Flask(__name__)
 
-# Загрузка конфигурации из файла
-def load_config():
-    config = {}
-    config_file = 'config.txt'
-    
-    if os.path.exists(config_file):
-        with open(config_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    config[key.strip()] = value.strip()
-    
-    return config
-
-config = load_config()
 
 # Настройка приложения
-app.secret_key = config.get('SESSION_SECRET') or secrets.token_hex(16)
-ADMIN_PASSWORD = config.get('ADMIN_PASSWORD', 'admin123')
-ADMIN_PASSWORD_HASH = generate_password_hash(ADMIN_PASSWORD)
-ADMIN_URL_SECRET = config.get('ADMIN_URL_SECRET', 'admin_secret_change_me')
+ADMIN_URL_SECRET = 'admin_secret_change_me'
 ADMIN_URL_HASH = hashlib.sha256(ADMIN_URL_SECRET.encode()).hexdigest()[:16]
 
 DATABASE = 'events.db'
@@ -237,6 +218,58 @@ def delete_event(event_id):
     
     return jsonify({'success': True})
 
+@app.route('/api/admin/registrations/<int:reg_id>', methods=['PUT'])
+def update_registration(reg_id):
+    data = request.json
+    new_slot = data.get('slot_time')
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Получаем текущую регистрацию
+    cursor.execute('SELECT * FROM registrations WHERE id = ?', (reg_id,))
+    current_reg = cursor.fetchone()
+    
+    if not current_reg:
+        conn.close()
+        return jsonify({'error': 'Регистрация не найдена'}), 404
+    
+    # Проверяем, не занят ли новый слот другим участником
+    cursor.execute('''
+        SELECT * FROM registrations 
+        WHERE event_id = ? AND slot_time = ? AND id != ?
+    ''', (current_reg['event_id'], new_slot, reg_id))
+    
+    existing = cursor.fetchone()
+    
+    if existing:
+        conn.close()
+        return jsonify({'error': 'Этот слот уже занят'}), 409
+    
+    # Обновляем слот
+    cursor.execute('''
+        UPDATE registrations 
+        SET slot_time = ?
+        WHERE id = ?
+    ''', (new_slot, reg_id))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True, 'slot_time': new_slot})
+
+@app.route('/api/admin/registrations/<int:reg_id>', methods=['DELETE'])
+def delete_registration(reg_id):
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute('DELETE FROM registrations WHERE id = ?', (reg_id,))
+    
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True})
+
 @app.route('/register/<event_hash>')
 def register_page(event_hash):
     conn = get_db()
@@ -337,36 +370,88 @@ def register_for_slot(event_hash):
         conn.close()
         return jsonify({'error': 'Регистрация закрыта'}), 403
     
+    # Проверяем, есть ли уже регистрация этого пользователя
+    cursor.execute('''
+        SELECT * FROM registrations 
+        WHERE event_id = ? AND child_name = ? AND phone = ?
+    ''', (event['id'], child_name, phone))
+    
+    existing_user_reg = cursor.fetchone()
+    
+    # Проверяем, занят ли выбранный слот
     cursor.execute('''
         SELECT * FROM registrations 
         WHERE event_id = ? AND slot_time = ?
     ''', (event['id'], slot_time))
     
-    existing = cursor.fetchone()
-    
-    if existing:
-        conn.close()
-        return jsonify({
-            'success': False, 
-            'error': 'Этот слот уже занят',
-            'phone': existing['phone']
-        }), 409
+    slot_taken = cursor.fetchone()
     
     try:
-        cursor.execute('''
-            INSERT INTO registrations (event_id, child_name, phone, slot_time)
-            VALUES (?, ?, ?, ?)
-        ''', (event['id'], child_name, phone, slot_time))
-        
-        conn.commit()
-        conn.close()
-        
-        return jsonify({
-            'success': True,
-            'child_name': child_name,
-            'phone': phone,
-            'slot_time': slot_time
-        })
+        if existing_user_reg:
+            # Пользователь уже зарегистрирован - меняем слот
+            old_slot = existing_user_reg['slot_time']
+            
+            if old_slot == slot_time:
+                # Пытается занять тот же слот
+                conn.close()
+                return jsonify({
+                    'success': True,
+                    'message': 'Вы уже зарегистрированы на это время',
+                    'child_name': child_name,
+                    'phone': phone,
+                    'slot_time': slot_time
+                })
+            
+            if slot_taken and slot_taken['phone'] != phone:
+                # Слот занят другим пользователем
+                conn.close()
+                return jsonify({
+                    'success': False, 
+                    'error': 'Этот слот уже занят другим участником'
+                }), 409
+            
+            # Обновляем слот в транзакции
+            cursor.execute('''
+                UPDATE registrations 
+                SET slot_time = ?
+                WHERE event_id = ? AND child_name = ? AND phone = ?
+            ''', (slot_time, event['id'], child_name, phone))
+            
+            conn.commit()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Регистрация изменена с {old_slot} на {slot_time}',
+                'child_name': child_name,
+                'phone': phone,
+                'slot_time': slot_time,
+                'updated': True
+            })
+        else:
+            # Новая регистрация
+            if slot_taken:
+                conn.close()
+                return jsonify({
+                    'success': False, 
+                    'error': 'Этот слот уже занят',
+                    'phone': slot_taken['phone']
+                }), 409
+            
+            cursor.execute('''
+                INSERT INTO registrations (event_id, child_name, phone, slot_time)
+                VALUES (?, ?, ?, ?)
+            ''', (event['id'], child_name, phone, slot_time))
+            
+            conn.commit()
+            conn.close()
+            
+            return jsonify({
+                'success': True,
+                'child_name': child_name,
+                'phone': phone,
+                'slot_time': slot_time
+            })
     except sqlite3.IntegrityError:
         conn.close()
         return jsonify({
@@ -409,70 +494,6 @@ def get_my_registration(event_hash):
         })
     
     return jsonify({'registered': False})
-
-@app.route('/')
-def index():
-    return f'''
-    <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Регистрация на мероприятие</title>
-            <style>
-                body {{
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    max-width: 800px;
-                    margin: 50px auto;
-                    padding: 20px;
-                    background: #f5f5f5;
-                }}
-                .container {{
-                    background: white;
-                    padding: 40px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }}
-                h1 {{
-                    color: #333;
-                }}
-                .info {{
-                    background: #e7f3ff;
-                    padding: 15px;
-                    border-radius: 4px;
-                    margin: 20px 0;
-                }}
-                a {{
-                    color: #007bff;
-                    text-decoration: none;
-                }}
-                a:hover {{
-                    text-decoration: underline;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>Система регистрации на мероприятия</h1>
-                <p>Добро пожаловать! Это веб-приложение для организации регистрации на однодневные мероприятия.</p>
-                
-                <div class="info">
-                    <h3>Для администраторов</h3>
-                    <p><strong>Ссылка на админ-панель:</strong> <a href="/admin/{ADMIN_URL_HASH}">/admin/{ADMIN_URL_HASH}</a></p>
-                    <p>Используйте пароль из файла config.txt (по умолчанию: admin123)</p>
-                    <p><strong>Важно:</strong> Измените ADMIN_PASSWORD и ADMIN_URL_SECRET в файле config.txt для безопасной работы!</p>
-                </div>
-                
-                <div class="info">
-                    <h3>Для участников</h3>
-                    <p>Если вы получили ссылку для регистрации на мероприятие, используйте эту ссылку для записи на удобное время.</p>
-                </div>
-                
-                <p style="margin-top: 30px; color: #666; font-size: 14px;">
-                    Подробная документация доступна в файле README.md
-                </p>
-            </div>
-        </body>
-    </html>
-    '''
 
 if __name__ == '__main__':
     init_db()
