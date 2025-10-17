@@ -11,8 +11,9 @@ app = Flask(__name__)
 
 
 # Настройка приложения
-ADMIN_URL_SECRET = 'admin_secret_change_me'
-ADMIN_URL_HASH = hashlib.sha256(ADMIN_URL_SECRET.encode()).hexdigest()[:16]
+# ADMIN_URL_SECRET = '147e09e37b09ec25'
+# ADMIN_URL_HASH = hashlib.sha256(ADMIN_URL_SECRET.encode()).hexdigest()[:16]
+ADMIN_URL_HASH = hashlib.sha256(ADMIN_URL_SECRET.encode()).hexdigest()[:16]147e09e37b09ec25
 
 DATABASE = 'events.db'
 
