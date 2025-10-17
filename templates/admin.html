@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Административная панель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="text"],
+        input[type="password"],
+        input[type="date"],
+        input[type="time"],
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #0056b3;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .event-card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .event-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .event-info {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .event-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .link-box {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .link-text {
+            font-family: monospace;
+            color: #495057;
+            word-break: break-all;
+            cursor: pointer;
+        }
+        
+        .breaks-container {
+            margin-top: 15px;
+        }
+        
+        .break-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 30px;
+            border-radius: 8px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .close {
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Административная панель</h1>
+        
+        <div id="loginSection" class="login-form">
+            <div class="form-group">
+                <label>Пароль</label>
+                <input type="password" id="password" placeholder="Введите пароль">
+            </div>
+            <button onclick="login()">Войти</button>
+        </div>
+        
+        <div id="adminSection" class="hidden">
+            <button onclick="showCreateEventForm()">Создать мероприятие</button>
+            
+            <div id="eventsList" style="margin-top: 30px;">
+                <h2>Мероприятия на сегодня</h2>
+                <div id="eventsContainer"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="createEventModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeCreateEventForm()">&times;</span>
+            <h2>Создать мероприятие</h2>
+            
+            <div class="form-group">
+                <label>Название мероприятия</label>
+                <input type="text" id="eventTitle" placeholder="Например: Консультация психолога">
+            </div>
+            
+            <div class="form-group">
+                <label>Дата мероприятия</label>
+                <input type="date" id="eventDate">
+            </div>
+            
+            <div class="form-group">
+                <label>Время начала</label>
+                <input type="time" id="startTime">
+            </div>
+            
+            <div class="form-group">
+                <label>Время окончания</label>
+                <input type="time" id="endTime">
+            </div>
+            
+            <div class="form-group">
+                <label>Длительность одного слота (минут)</label>
+                <input type="number" id="slotDuration" value="15" min="5" max="120">
+            </div>
+            
+            <div class="breaks-container">
+                <label>Перерывы</label>
+                <div id="breaksContainer"></div>
+                <button type="button" class="btn-secondary" onclick="addBreak()">Добавить перерыв</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button onclick="createEvent()">Создать и получить ссылку</button>
+            </div>
+            
+            <div id="linkContainer" class="hidden" style="margin-top: 20px;">
+                <h3>Ссылка для регистрации</h3>
+                <div class="link-box">
+                    <span class="link-text" id="registrationLink" onclick="copyLink()"></span>
+                    <button onclick="copyLink()">Копировать</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="registrationsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRegistrationsModal()">&times;</span>
+            <h2>Список участников</h2>
+            <div id="registrationsContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let adminLoggedIn = false;
+        
+        async function login() {
+            const password = document.getElementById('password').value;
+            
+            const response = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
+                body: JSON.stringify({password})
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                adminLoggedIn = true;
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('adminSection').classList.remove('hidden');
+                loadEvents();
+            } else {
+                alert('Неверный пароль');
+            }
+        }
+        
+        async function loadEvents() {
+            const response = await fetch('/api/admin/events', {
+                credentials: 'include'
+            });
+            
+            const events = await response.json();
+            
+            const container = document.getElementById('eventsContainer');
+            container.innerHTML = '';
+            
+            if (events.length === 0) {
+                container.innerHTML = '<p>Нет мероприятий на сегодня</p>';
+                return;
+            }
+            
+            events.forEach(event => {
+                const eventCard = document.createElement('div');
+                eventCard.className = 'event-card';
+                eventCard.innerHTML = `
+                    <div class="event-header">
+                        <div class="event-title">${event.title}</div>
+                        <div>${event.registration_open ? '🟢 Открыто' : '🔴 Закрыто'}</div>
+                    </div>
+                    <div class="event-info">
+                        Дата: ${event.event_date} | 
+                        Время: ${event.start_time} - ${event.end_time} | 
+                        Слот: ${event.slot_duration} мин | 
+                        Зарегистрировано: ${event.registrations_count}
+                    </div>
+                    <div class="link-box">
+                        <span class="link-text" onclick="copyEventLink('${event.event_hash}')">${window.location.origin}/register/${event.event_hash}</span>
+                        <button onclick="copyEventLink('${event.event_hash}')">Копировать</button>
+                    </div>
+                    <div class="event-actions">
+                        <button onclick="viewRegistrations(${event.id})">Посмотреть участников</button>
+                        <button class="btn-secondary" onclick="toggleRegistration(${event.id}, ${event.registration_open})">${event.registration_open ? 'Закрыть регистрацию' : 'Открыть регистрацию'}</button>
+                        <button class="btn-danger" onclick="deleteEvent(${event.id})">Удалить</button>
+                    </div>
+                `;
+                container.appendChild(eventCard);
+            });
+        }
+        
+        function copyEventLink(hash) {
+            const link = `${window.location.origin}/register/${hash}`;
+            navigator.clipboard.writeText(link);
+            alert('Ссылка скопирована в буфер обмена!');
+        }
+        
+        function showCreateEventForm() {
+            document.getElementById('createEventModal').style.display = 'block';
+            document.getElementById('eventDate').valueAsDate = new Date();
+        }
+        
+        function closeCreateEventForm() {
+            document.getElementById('createEventModal').style.display = 'none';
+            document.getElementById('linkContainer').classList.add('hidden');
+        }
+        
+        let breakCounter = 0;
+        
+        function addBreak() {
+            const container = document.getElementById('breaksContainer');
+            const breakItem = document.createElement('div');
+            breakItem.className = 'break-item';
+            breakItem.id = `break-${breakCounter}`;
+            breakItem.innerHTML = `
+                <input type="time" class="break-start" placeholder="Начало">
+                <input type="time" class="break-end" placeholder="Конец">
+                <button type="button" class="btn-danger" onclick="removeBreak(${breakCounter})">Удалить</button>
+            `;
+            container.appendChild(breakItem);
+            breakCounter++;
+        }
+        
+        function removeBreak(id) {
+            document.getElementById(`break-${id}`).remove();
+        }
+        
+        async function createEvent() {
+            const title = document.getElementById('eventTitle').value;
+            const eventDate = document.getElementById('eventDate').value;
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            const slotDuration = document.getElementById('slotDuration').value;
+            
+            const breaks = [];
+            document.querySelectorAll('.break-item').forEach(item => {
+                const start = item.querySelector('.break-start').value;
+                const end = item.querySelector('.break-end').value;
+                if (start && end) {
+                    breaks.push({start, end});
+                }
+            });
+            
+            const response = await fetch('/api/admin/events', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
+                body: JSON.stringify({
+                    title,
+                    event_date: eventDate,
+                    start_time: startTime,
+                    end_time: endTime,
+                    slot_duration: slotDuration,
+                    breaks
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('registrationLink').textContent = data.registration_url;
+                document.getElementById('linkContainer').classList.remove('hidden');
+                loadEvents();
+            }
+        }
+        
+        function copyLink() {
+            const link = document.getElementById('registrationLink').textContent;
+            navigator.clipboard.writeText(link);
+            alert('Ссылка скопирована в буфер обмена!');
+        }
+        
+        async function toggleRegistration(eventId, currentState) {
+            const response = await fetch(`/api/admin/events/${eventId}/toggle`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                loadEvents();
+            }
+        }
+        
+        async function deleteEvent(eventId) {
+            if (!confirm('Вы уверены, что хотите удалить это мероприятие?')) {
+                return;
+            }
+            
+            const response = await fetch(`/api/admin/events/${eventId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                loadEvents();
+            }
+        }
+        
+        async function viewRegistrations(eventId) {
+            const response = await fetch(`/api/admin/events/${eventId}/registrations`, {
+                credentials: 'include'
+            });
+            
+            const registrations = await response.json();
+            
+            const container = document.getElementById('registrationsContainer');
+            
+            if (registrations.length === 0) {
+                container.innerHTML = '<p>Нет зарегистрированных участников</p>';
+            } else {
+                let tableHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Время</th>
+                                <th>Имя ребенка</th>
+                                <th>Телефон</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                registrations.forEach(reg => {
+                    tableHTML += `
+                        <tr>
+                            <td>${reg.slot_time}</td>
+                            <td>${reg.child_name}</td>
+                            <td>${reg.phone}</td>
+                        </tr>
+                    `;
+                });
+                
+                tableHTML += '</tbody></table>';
+                container.innerHTML = tableHTML;
+            }
+            
+            document.getElementById('registrationsModal').style.display = 'block';
+        }
+        
+        function closeRegistrationsModal() {
+            document.getElementById('registrationsModal').style.display = 'none';
+        }
+        
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
