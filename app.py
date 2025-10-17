@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify, session
-from flask_cors import CORS
 import sqlite3
 import hashlib
 import secrets
@@ -9,17 +8,29 @@ from werkzeug.security import check_password_hash, generate_password_hash
 import json
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SESSION_SECRET', secrets.token_hex(16))
 
-# Настройка сессий для работы в Replit
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_HTTPONLY'] = True
+# Загрузка конфигурации из файла
+def load_config():
+    config = {}
+    config_file = 'config.txt'
+    
+    if os.path.exists(config_file):
+        with open(config_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    config[key.strip()] = value.strip()
+    
+    return config
 
-CORS(app, supports_credentials=True)
+config = load_config()
 
-ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+# Настройка приложения
+app.secret_key = config.get('SESSION_SECRET') or secrets.token_hex(16)
+ADMIN_PASSWORD = config.get('ADMIN_PASSWORD', 'admin123')
 ADMIN_PASSWORD_HASH = generate_password_hash(ADMIN_PASSWORD)
-ADMIN_URL_SECRET = os.environ.get('ADMIN_URL_SECRET', 'admin_secret_change_me')
+ADMIN_URL_SECRET = config.get('ADMIN_URL_SECRET', 'admin_secret_change_me')
 ADMIN_URL_HASH = hashlib.sha256(ADMIN_URL_SECRET.encode()).hexdigest()[:16]
 
 DATABASE = 'events.db'
@@ -204,7 +215,8 @@ def create_event():
     event_id = cursor.lastrowid
     conn.close()
     
-    registration_url = f"{request.host_url}register/{event_hash}"
+    # Относительная ссылка для регистрации
+    registration_url = f"/register/{event_hash}"
     
     return jsonify({
         'success': True,
@@ -471,8 +483,8 @@ def index():
                 <div class="info">
                     <h3>Для администраторов</h3>
                     <p><strong>Ссылка на админ-панель:</strong> <a href="/admin/{ADMIN_URL_HASH}">/admin/{ADMIN_URL_HASH}</a></p>
-                    <p>Используйте пароль из переменной окружения ADMIN_PASSWORD (по умолчанию: admin123)</p>
-                    <p><strong>Важно:</strong> Не забудьте настроить переменные окружения ADMIN_PASSWORD и ADMIN_URL_SECRET для безопасной работы!</p>
+                    <p>Используйте пароль из файла config.txt (по умолчанию: admin123)</p>
+                    <p><strong>Важно:</strong> Измените ADMIN_PASSWORD и ADMIN_URL_SECRET в файле config.txt для безопасной работы!</p>
                 </div>
                 
                 <div class="info">

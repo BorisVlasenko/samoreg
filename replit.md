@@ -32,10 +32,11 @@
 
 ## Технический стек
 
-- **Backend:** Flask 3.1.2 + Flask-CORS 6.0.1
+- **Backend:** Flask 3.1.2
 - **Database:** SQLite (файл `events.db`)
 - **Frontend:** Vanilla JavaScript, HTML, CSS
 - **Python:** 3.11
+- **Конфигурация:** Файл config.txt
 
 ## Структура проекта
 
