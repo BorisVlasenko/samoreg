@@ -114,22 +114,8 @@ def capitalize_name(name):
 def admin_page():
     return render_template('admin.html', admin_hash=ADMIN_URL_HASH)
 
-@app.route('/api/admin/login', methods=['POST'])
-def admin_login():
-    data = request.json
-    password = data.get('password')
-    
-    if check_password_hash(ADMIN_PASSWORD_HASH, password):
-        session['admin_logged_in'] = True
-        return jsonify({'success': True})
-    
-    return jsonify({'success': False, 'message': 'Неверный пароль'}), 401
-
 @app.route('/api/admin/events', methods=['GET'])
 def get_admin_events():
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     today = datetime.now().strftime('%Y-%m-%d')
     conn = get_db()
     cursor = conn.cursor()
@@ -163,9 +149,6 @@ def get_admin_events():
 
 @app.route('/api/admin/events/<int:event_id>/registrations', methods=['GET'])
 def get_event_registrations(event_id):
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     conn = get_db()
     cursor = conn.cursor()
     
@@ -190,9 +173,6 @@ def get_event_registrations(event_id):
 
 @app.route('/api/admin/events', methods=['POST'])
 def create_event():
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     data = request.json
     title = data.get('title')
     event_date = data.get('event_date')
@@ -227,9 +207,6 @@ def create_event():
 
 @app.route('/api/admin/events/<int:event_id>/toggle', methods=['POST'])
 def toggle_registration(event_id):
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     conn = get_db()
     cursor = conn.cursor()
     
@@ -249,9 +226,6 @@ def toggle_registration(event_id):
 
 @app.route('/api/admin/events/<int:event_id>', methods=['DELETE'])
 def delete_event(event_id):
-    if not session.get('admin_logged_in'):
-        return jsonify({'error': 'Unauthorized'}), 401
-    
     conn = get_db()
     cursor = conn.cursor()
     

@@ -228,15 +228,7 @@
     <div class="container">
         <h1>Административная панель</h1>
         
-        <div id="loginSection" class="login-form">
-            <div class="form-group">
-                <label>Пароль</label>
-                <input type="password" id="password" placeholder="Введите пароль">
-            </div>
-            <button onclick="login()">Войти</button>
-        </div>
-        
-        <div id="adminSection" class="hidden">
+        <div id="adminSection">
             <button onclick="showCreateEventForm()">Создать мероприятие</button>
             
             <div id="eventsList" style="margin-top: 30px;">
@@ -305,29 +297,10 @@
     </div>
 
     <script>
-        let adminLoggedIn = false;
-        
-        async function login() {
-            const password = document.getElementById('password').value;
-            
-            const response = await fetch('/api/admin/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                credentials: 'include',
-                body: JSON.stringify({password})
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                adminLoggedIn = true;
-                document.getElementById('loginSection').classList.add('hidden');
-                document.getElementById('adminSection').classList.remove('hidden');
-                loadEvents();
-            } else {
-                alert('Неверный пароль');
-            }
-        }
+        // Загрузка событий при открытии страницы
+        window.onload = function() {
+            loadEvents();
+        };
         
         async function loadEvents() {
             const response = await fetch('/api/admin/events', {
@@ -364,7 +337,7 @@
                         Зарегистрировано: ${event.registrations_count}
                     </div>
                     <div class="link-box">
-                        <span class="link-text" onclick="copyEventLink('${event.event_hash}')">${window.location.origin}/register/${event.event_hash}</span>
+                        <span class="link-text" onclick="copyEventLink('${event.event_hash}')">/register/${event.event_hash}</span>
                         <button onclick="copyEventLink('${event.event_hash}')">Копировать</button>
                     </div>
                     <div class="event-actions">
@@ -378,7 +351,7 @@
         }
         
         function copyEventLink(hash) {
-            const link = `${window.location.origin}/register/${hash}`;
+            const link = `/register/${hash}`;
             navigator.clipboard.writeText(link);
             alert('Ссылка скопирована в буфер обмена!');
         }
