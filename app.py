@@ -10,6 +10,12 @@ import json
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', secrets.token_hex(16))
+
+# Настройка сессий для работы в Replit
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+
 CORS(app, supports_credentials=True)
 
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
