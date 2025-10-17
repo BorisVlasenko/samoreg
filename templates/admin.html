@@ -473,12 +473,12 @@
                 credentials: 'include'
             });
             
-            const registrations = await response.json();
+            const slots = await response.json();
             
             const container = document.getElementById('registrationsContainer');
             
-            if (registrations.length === 0) {
-                container.innerHTML = '<p>Нет зарегистрированных участников</p>';
+            if (slots.length === 0) {
+                container.innerHTML = '<p>Нет доступных слотов</p>';
             } else {
                 let tableHTML = `
                     <table>
@@ -493,18 +493,31 @@
                         <tbody>
                 `;
                 
-                registrations.forEach(reg => {
-                    tableHTML += `
-                        <tr>
-                            <td>${reg.slot_time}</td>
-                            <td>${reg.child_name}</td>
-                            <td>${reg.phone}</td>
-                            <td>
-                                <button class="btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="editRegistration(${reg.id}, '${reg.slot_time}', '${reg.child_name}')">Изменить</button>
-                                <button class="btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteRegistration(${reg.id})">Удалить</button>
-                            </td>
-                        </tr>
-                    `;
+                slots.forEach(slot => {
+                    if (slot.occupied) {
+                        // Занятый слот
+                        tableHTML += `
+                            <tr style="background-color: #e3f2fd;">
+                                <td><strong>${slot.slot_time}</strong></td>
+                                <td>${slot.child_name}</td>
+                                <td>${slot.phone}</td>
+                                <td>
+                                    <button class="btn-secondary" style="padding: 5px 10px; font-size: 12px;" onclick="editRegistration(${slot.registration_id}, '${slot.slot_time}', '${slot.child_name}')">Изменить</button>
+                                    <button class="btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteRegistration(${slot.registration_id})">Удалить</button>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        // Свободный слот
+                        tableHTML += `
+                            <tr>
+                                <td><strong>${slot.slot_time}</strong></td>
+                                <td style="color: #999;">—</td>
+                                <td style="color: #999;">—</td>
+                                <td style="color: #999;">Свободно</td>
+                            </tr>
+                        `;
+                    }
                 });
                 
                 tableHTML += '</tbody></table>';

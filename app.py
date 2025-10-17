@@ -11,9 +11,8 @@ app = Flask(__name__)
 
 
 # Настройка приложения
-# ADMIN_URL_SECRET = '147e09e37b09ec25'
-# ADMIN_URL_HASH = hashlib.sha256(ADMIN_URL_SECRET.encode()).hexdigest()[:16]
-ADMIN_URL_HASH = '147e09e37b09ec25'
+ADMIN_URL_SECRET = 'admin_secret_change_me'
+ADMIN_URL_HASH = hashlib.sha256(ADMIN_URL_SECRET.encode()).hexdigest()[:16]
 
 DATABASE = 'events.db'
 
@@ -92,9 +91,11 @@ def capitalize_name(name):
     parts = name.strip().split()
     return ' '.join([part.capitalize() for part in parts])
 
-@app.route(f'/admin/{ADMIN_URL_HASH}')
 def admin_page():
     return render_template('admin.html', admin_hash=ADMIN_URL_HASH)
+
+# Регистрируем маршрут админ-панели динамически
+app.add_url_rule(f'/admin/{ADMIN_URL_HASH}', 'admin_page', admin_page)
 
 @app.route('/api/admin/events', methods=['GET'])
 def get_admin_events():
@@ -134,24 +135,58 @@ def get_event_registrations(event_id):
     conn = get_db()
     cursor = conn.cursor()
     
+    # Получаем информацию о мероприятии
+    cursor.execute('SELECT * FROM events WHERE id = ?', (event_id,))
+    event = cursor.fetchone()
+    
+    if not event:
+        conn.close()
+        return jsonify({'error': 'Event not found'}), 404
+    
+    # Генерируем все слоты
+    breaks = json.loads(event['breaks']) if event['breaks'] else []
+    all_slots = generate_time_slots(event['start_time'], event['end_time'], event['slot_duration'], breaks)
+    
+    # Получаем регистрации
     cursor.execute('''
         SELECT * FROM registrations 
         WHERE event_id = ?
-        ORDER BY slot_time
     ''', (event_id,))
     
-    registrations = []
+    registrations_dict = {}
     for row in cursor.fetchall():
-        registrations.append({
+        registrations_dict[row['slot_time']] = {
             'id': row['id'],
             'child_name': row['child_name'],
             'phone': row['phone'],
-            'slot_time': row['slot_time'],
             'registered_at': row['registered_at']
-        })
+        }
+    
+    # Формируем результат со всеми слотами
+    slots_with_registrations = []
+    for slot_time in all_slots:
+        if slot_time in registrations_dict:
+            reg = registrations_dict[slot_time]
+            slots_with_registrations.append({
+                'slot_time': slot_time,
+                'occupied': True,
+                'registration_id': reg['id'],
+                'child_name': reg['child_name'],
+                'phone': reg['phone'],
+                'registered_at': reg['registered_at']
+            })
+        else:
+            slots_with_registrations.append({
+                'slot_time': slot_time,
+                'occupied': False,
+                'registration_id': None,
+                'child_name': None,
+                'phone': None,
+                'registered_at': None
+            })
     
     conn.close()
-    return jsonify(registrations)
+    return jsonify(slots_with_registrations)
 
 @app.route('/api/admin/events', methods=['POST'])
 def create_event():
