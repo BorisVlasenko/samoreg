@@ -3,15 +3,19 @@ from flask_cors import CORS
 import sqlite3
 import hashlib
 import secrets
+import os
 from datetime import datetime, timedelta
+from werkzeug.security import check_password_hash, generate_password_hash
 import json
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+app.secret_key = os.environ.get('SESSION_SECRET', secrets.token_hex(16))
 CORS(app, supports_credentials=True)
 
-ADMIN_PASSWORD = "admin123"
-ADMIN_URL_HASH = hashlib.sha256("admin_secret".encode()).hexdigest()[:16]
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+ADMIN_PASSWORD_HASH = generate_password_hash(ADMIN_PASSWORD)
+ADMIN_URL_SECRET = os.environ.get('ADMIN_URL_SECRET', 'admin_secret_change_me')
+ADMIN_URL_HASH = hashlib.sha256(ADMIN_URL_SECRET.encode()).hexdigest()[:16]
 
 DATABASE = 'events.db'
 
@@ -99,7 +103,7 @@ def admin_login():
     data = request.json
     password = data.get('password')
     
-    if password == ADMIN_PASSWORD:
+    if check_password_hash(ADMIN_PASSWORD_HASH, password):
         session['admin_logged_in'] = True
         return jsonify({'success': True})
     
@@ -422,11 +426,58 @@ def index():
         <head>
             <meta charset="UTF-8">
             <title>Регистрация на мероприятие</title>
+            <style>
+                body {{
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    max-width: 800px;
+                    margin: 50px auto;
+                    padding: 20px;
+                    background: #f5f5f5;
+                }}
+                .container {{
+                    background: white;
+                    padding: 40px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }}
+                h1 {{
+                    color: #333;
+                }}
+                .info {{
+                    background: #e7f3ff;
+                    padding: 15px;
+                    border-radius: 4px;
+                    margin: 20px 0;
+                }}
+                a {{
+                    color: #007bff;
+                    text-decoration: none;
+                }}
+                a:hover {{
+                    text-decoration: underline;
+                }}
+            </style>
         </head>
         <body>
-            <h1>Система регистрации на мероприятия</h1>
-            <p>Административная панель: <a href="/admin/{ADMIN_URL_HASH}">/admin/{ADMIN_URL_HASH}</a></p>
-            <p>Пароль по умолчанию: {ADMIN_PASSWORD}</p>
+            <div class="container">
+                <h1>Система регистрации на мероприятия</h1>
+                <p>Добро пожаловать! Это веб-приложение для организации регистрации на однодневные мероприятия.</p>
+                
+                <div class="info">
+                    <h3>Для администраторов</h3>
+                    <p>Если вы администратор, используйте защищенную ссылку и пароль, которые были предоставлены вам при настройке приложения.</p>
+                    <p><strong>Важно:</strong> Не забудьте настроить переменные окружения ADMIN_PASSWORD и ADMIN_URL_SECRET для безопасной работы!</p>
+                </div>
+                
+                <div class="info">
+                    <h3>Для участников</h3>
+                    <p>Если вы получили ссылку для регистрации на мероприятие, используйте эту ссылку для записи на удобное время.</p>
+                </div>
+                
+                <p style="margin-top: 30px; color: #666; font-size: 14px;">
+                    Подробная документация доступна в файле README.md
+                </p>
+            </div>
         </body>
     </html>
     '''
